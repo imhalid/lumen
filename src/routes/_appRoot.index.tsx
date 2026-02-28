@@ -6,6 +6,7 @@ import { PageLayout } from "../components/page-layout"
 type RouteSearch = {
   query: string | undefined
   view: "grid" | "list"
+  folder: string | undefined
 }
 
 export const Route = createFileRoute("/_appRoot/")({
@@ -13,21 +14,29 @@ export const Route = createFileRoute("/_appRoot/")({
     return {
       query: typeof search.query === "string" ? search.query : undefined,
       view: search.view === "list" ? "list" : "grid",
+      folder: typeof search.folder === "string" ? search.folder : undefined,
     }
   },
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const { query, view } = Route.useSearch()
+  const { query, view, folder } = Route.useSearch()
   const navigate = Route.useNavigate()
 
   return (
     <PageLayout title="Notes" icon={<NoteIcon16 />}>
       <div className="p-4 pt-0">
         <NoteList
+          folder={folder ?? ""}
           query={query ?? ""}
           view={view}
+          onFolderChange={(nextFolder) =>
+            navigate({
+              search: (prev) => ({ ...prev, folder: nextFolder }),
+              replace: true,
+            })
+          }
           onQueryChange={(query) =>
             navigate({ search: (prev) => ({ ...prev, query }), replace: true })
           }

@@ -8,6 +8,7 @@ import {
   globalStateMachineAtom,
   markdownFilesAtom,
   notesAtom,
+  virtualFoldersAtom,
 } from "../global-state"
 import { Note, NoteId } from "../schema"
 import { parseFrontmatter, updateFrontmatterValue } from "../utils/frontmatter"
@@ -50,15 +51,26 @@ export function useBacklinksForId(id: NoteId | undefined) {
   return useAtomValue(backlinksAtom)
 }
 
+/** All folder path prefixes of a note id (e.g. "a/b/c" -> ["a", "a/b"]) */
+function getFolderPrefixes(noteId: string): string[] {
+  const parts = noteId.split("/")
+  if (parts.length <= 1) return []
+  const prefixes: string[] = []
+  for (let i = 1; i < parts.length; i += 1) {
+    prefixes.push(parts.slice(0, i).join("/"))
+  }
+  return prefixes
+}
+
 export function useSaveNote() {
   const send = useSetAtom(globalStateMachineAtom)
+  const setVirtualFolders = useSetAtom(virtualFoldersAtom)
   const githubUser = useAtomValue(githubUserAtom)
   const githubRepo = useAtomValue(githubRepoAtom)
   const getNotes = useAtomCallback(React.useCallback((get) => get(notesAtom), []))
 
   const saveNote = React.useCallback(
     async ({ id, content }: Pick<Note, "id" | "content">) => {
-      // Add updated_at timestamp to frontmatter
       const contentWithTimestamp = updateFrontmatterValue({
         content,
         properties: { updated_at: new Date() },
@@ -69,7 +81,14 @@ export function useSaveNote() {
         markdownFiles: { [`${id}.md`]: contentWithTimestamp },
       })
 
-      // If the note has a gist ID, update the gist
+      // Remove this note's folder path(s) from virtual folders now that they exist on disk
+      const folderPrefixes = getFolderPrefixes(id ?? "")
+      if (folderPrefixes.length > 0) {
+        setVirtualFolders((prev) =>
+          prev.filter((path) => !folderPrefixes.includes(path)),
+        )
+      }
+
       const { frontmatter } = parseFrontmatter(contentWithTimestamp)
       if (typeof frontmatter.gist_id === "string" && githubUser && githubRepo) {
         await updateGist({
@@ -81,7 +100,7 @@ export function useSaveNote() {
         })
       }
     },
-    [send, githubUser, githubRepo, getNotes],
+    [send, setVirtualFolders, githubUser, githubRepo, getNotes],
   )
 
   return saveNote
@@ -151,6 +170,92 @@ export function useRenameNote() {
       return { success: true }
     },
     [getMarkdownFiles, send],
+  )
+}
+
+export type MoveNotesResult =
+  | { success: true; moved: number; skipped: string[] }
+  | { success: false; reason: string }
+
+/** Move multiple notes to a target folder. targetFolder "" = root. Uses note basename (e.g. "a/b" → "folder/b"). */
+export function useMoveNotesToFolder() {
+  const getMarkdownFiles = useAtomCallback(React.useCallback((get) => get(markdownFilesAtom), []))
+  const send = useSetAtom(globalStateMachineAtom)
+  const setVirtualFolders = useSetAtom(virtualFoldersAtom)
+
+  return React.useCallback(
+    (noteIds: NoteId[], targetFolder: string): MoveNotesResult => {
+      const markdownFiles = getMarkdownFiles()
+      const moved: { oldId: NoteId; newId: NoteId; content: string }[] = []
+      const skipped: string[] = []
+
+      for (const oldId of noteIds) {
+        const oldFilepath = `${oldId}.md`
+        const content = markdownFiles[oldFilepath]
+        if (content == null) {
+          skipped.push(oldId)
+          continue
+        }
+        const basename = oldId.includes("/") ? oldId.split("/").pop()! : oldId
+        const newId = targetFolder ? `${targetFolder}/${basename}` : basename
+        if (newId === oldId) continue
+        if (!isValidNoteId(newId)) {
+          skipped.push(oldId)
+          continue
+        }
+        const newFilepath = `${newId}.md`
+        if (markdownFiles[newFilepath] != null && newFilepath !== oldFilepath) {
+          skipped.push(oldId)
+          continue
+        }
+        moved.push({ oldId, newId, content })
+      }
+
+      if (moved.length === 0) {
+        return { success: true, moved: 0, skipped }
+      }
+
+      const updatedMarkdownFiles: Record<string, string | null> = {}
+      const movedOldPaths = new Set(moved.map((m) => `${m.oldId}.md`))
+
+      for (const [filepath, content] of Object.entries(markdownFiles)) {
+        let newContent = content
+        for (const { oldId, newId } of moved) {
+          newContent = updateWikilinks({ fileContent: newContent, oldId, newId })
+        }
+        if (newContent !== content) updatedMarkdownFiles[filepath] = newContent
+      }
+
+      for (const { oldId, newId, content } of moved) {
+        const oldFilepath = `${oldId}.md`
+        const newFilepath = `${newId}.md`
+        updatedMarkdownFiles[newFilepath] = updateWikilinks({
+          fileContent: content,
+          oldId,
+          newId,
+        })
+        updatedMarkdownFiles[oldFilepath] = null
+      }
+
+      const folderPrefixesToRemove = new Set<string>()
+      for (const { oldId } of moved) {
+        for (const p of getFolderPrefixes(oldId)) folderPrefixesToRemove.add(p)
+      }
+      if (folderPrefixesToRemove.size > 0) {
+        setVirtualFolders((prev) =>
+          prev.filter((path) => !folderPrefixesToRemove.has(path)),
+        )
+      }
+
+      send({
+        type: "WRITE_FILES",
+        markdownFiles: updatedMarkdownFiles,
+        commitMessage: `Move ${moved.length} note(s) to ${targetFolder || "root"}`,
+      })
+
+      return { success: true, moved: moved.length, skipped }
+    },
+    [getMarkdownFiles, send, setVirtualFolders],
   )
 }
 

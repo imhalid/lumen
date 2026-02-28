@@ -647,6 +647,14 @@ export const githubRepoAtom = selectAtom(
 )
 
 // -----------------------------------------------------------------------------
+// Virtual folders (UI-only until a note is created inside; then they become real)
+// -----------------------------------------------------------------------------
+
+const VIRTUAL_FOLDERS_STORAGE_KEY = "lumen_virtual_folders"
+
+export const virtualFoldersAtom = atomWithStorage<string[]>(VIRTUAL_FOLDERS_STORAGE_KEY, [])
+
+// -----------------------------------------------------------------------------
 // Notes
 // -----------------------------------------------------------------------------
 

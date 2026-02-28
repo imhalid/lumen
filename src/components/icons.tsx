@@ -1158,3 +1158,15 @@ export function FlagFillIcon16(props: IconProps) {
     </Icon>
   )
 }
+
+export function FolderIcon16(props: IconProps) {
+  return (
+    <Icon size={16} {...props}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M1 3C1 2.44772 1.44772 2 2 2H6.5L8 4H14C14.5523 4 15 4.44772 15 5V13C15 13.5523 14.5523 14 14 14H2C1.44772 14 1 13.5523 1 13V3ZM2.5 3.5V12.5H13.5V5H7.5L6 3H2.5V3.5Z"
+      />
+    </Icon>
+  )
+}

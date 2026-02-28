@@ -6,6 +6,7 @@ import { cx } from "../utils/cx"
 import { IconButton } from "./icon-button"
 import { ArrowLeftIcon16, ArrowRightIcon16, SidebarIcon16 } from "./icons"
 import { NavItems } from "./nav-items"
+import { NewFolderButton } from "./new-folder-button"
 import { NewNoteButton } from "./new-note-button"
 
 export function Sidebar() {
@@ -47,6 +48,7 @@ export function Sidebar() {
           >
             <ArrowRightIcon16 className="transition-transform group-active:translate-x-0.5" />
           </IconButton>
+          <NewFolderButton />
           <NewNoteButton />
         </div>
       </div>

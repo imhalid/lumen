@@ -30,6 +30,8 @@ const isResolvingRepoAtom = selectAtom(globalStateMachineAtom, (state) =>
 
 type NoteCardProps = {
   id: NoteId
+  /** When true, card is not clickable (e.g. in select mode for move). */
+  selectMode?: boolean
 }
 
 export function NotePreviewCard(props: NoteCardProps) {
@@ -44,7 +46,7 @@ export function NotePreviewCard(props: NoteCardProps) {
   return <_NotePreviewCard {...props} />
 }
 
-const _NotePreviewCard = React.memo(function NoteCard({ id }: NoteCardProps) {
+const _NotePreviewCard = React.memo(function NoteCard({ id, selectMode = false }: NoteCardProps) {
   const note = useNoteById(id)
   const githubRepo = useAtomValue(githubRepoAtom)
   const isSignedOut = useAtomValue(isSignedOutAtom)
@@ -56,34 +58,44 @@ const _NotePreviewCard = React.memo(function NoteCard({ id }: NoteCardProps) {
 
   if (!note) return null
 
+  const cardClassName = cx(
+    "card-1 rounded-[calc(var(--border-radius-base)+6px)]! relative block w-full overflow-hidden -outline-offset-1",
+    "focus-visible:outline-hidden",
+    "focus-visible:outline-2",
+    "focus-visible:outline",
+    "focus-visible:outline-border-focus",
+    "[&:not(:focus-visible)]:group-hover:outline-2",
+    "[&:not(:focus-visible)]:group-hover:outline",
+    "[&:not(:focus-visible)]:group-hover:outline-[var(--neutral-7)]",
+    "epaper:group-hover:outline-border!",
+    "[&:not(:focus-visible)]:group-focus-within:outline-2",
+    "[&:not(:focus-visible)]:group-focus-within:outline",
+    "[&:not(:focus-visible)]:group-focus-within:outline-[var(--neutral-7)]",
+    "epaper:group-focus-within:outline-border!",
+    !selectMode && "cursor-pointer",
+  )
+
   return (
     <div className="group relative">
-      <Link
-        to="/notes/$"
-        params={{ _splat: id }}
-        search={{
-          mode: "read",
-          query: undefined,
-          view: "grid",
-        }}
-        className={cx(
-          "card-1 rounded-[calc(var(--border-radius-base)+6px)]! relative block w-full cursor-pointer overflow-hidden -outline-offset-1",
-          "focus-visible:outline-hidden",
-          "focus-visible:outline-2",
-          "focus-visible:outline",
-          "focus-visible:outline-border-focus",
-          "[&:not(:focus-visible)]:group-hover:outline-2",
-          "[&:not(:focus-visible)]:group-hover:outline",
-          "[&:not(:focus-visible)]:group-hover:outline-[var(--neutral-7)]",
-          "epaper:group-hover:outline-border!",
-          "[&:not(:focus-visible)]:group-focus-within:outline-2",
-          "[&:not(:focus-visible)]:group-focus-within:outline",
-          "[&:not(:focus-visible)]:group-focus-within:outline-[var(--neutral-7)]",
-          "epaper:group-focus-within:outline-border!",
-        )}
-      >
-        <NotePreview note={note} className="coarse:pr-[52px]" />
-      </Link>
+      {selectMode ? (
+        <div className={cardClassName}>
+          <NotePreview note={note} className="coarse:pr-[52px]" />
+        </div>
+      ) : (
+        <Link
+          to="/notes/$"
+          params={{ _splat: id }}
+          search={{
+            mode: "read",
+            query: undefined,
+            view: "grid",
+          }}
+          className={cardClassName}
+        >
+          <NotePreview note={note} className="coarse:pr-[52px]" />
+        </Link>
+      )}
+      {!selectMode ? (
       <div
         className={cx(
           "absolute right-1.5 top-1.5 rounded bg-bg-card opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 coarse:opacity-100",
@@ -108,7 +120,8 @@ const _NotePreviewCard = React.memo(function NoteCard({ id }: NoteCardProps) {
           {note.pinned ? <PinFillIcon16 className="text-text-pinned" /> : <PinIcon16 />}
         </IconButton>
       </div>
-      {note ? (
+      ) : null}
+      {!selectMode && note ? (
         <div
           className={cx(
             "absolute bottom-1.5 right-1.5 flex gap-1 rounded bg-bg-card opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 coarse:opacity-100",

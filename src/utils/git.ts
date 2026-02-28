@@ -7,13 +7,17 @@ import { startTimer } from "./timer"
 export const REPO_DIR = "/repo"
 const DEFAULT_BRANCH = "main"
 
+// Use the public isomorphic-git CORS proxy in development to avoid depending on Vercel dev,
+// and fall back to the self-hosted proxy in production.
+const CORS_PROXY =
+  import.meta.env.DEV ? "https://cors.isomorphic-git.org" : "/cors-proxy"
+
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   const options: Parameters<typeof git.clone>[0] = {
     fs,
     http,
     dir: REPO_DIR,
-    // corsProxy: "https://cors.isomorphic-git.org",
-    corsProxy: "/cors-proxy",
+    corsProxy: CORS_PROXY,
     url: `https://github.com/${repo.owner}/${repo.name}`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,

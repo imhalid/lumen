@@ -84,7 +84,7 @@ export function NavItems({
             <li>
               <NavLink
                 to="/"
-                search={{ query: undefined, view: "grid" }}
+                search={{ query: undefined, view: "grid", folder: undefined }}
                 activeIcon={<NoteFillIcon16 />}
                 icon={<NoteIcon16 />}
                 onNavigate={onNavigate}

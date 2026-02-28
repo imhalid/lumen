@@ -87,7 +87,7 @@ export async function updateGist({
       fs: gistFs,
       http,
       dir: gistDir,
-      corsProxy: "/cors-proxy",
+      corsProxy: import.meta.env.DEV ? "https://cors.isomorphic-git.org" : "/cors-proxy",
       url: `https://gist.github.com/${gistId}.git`,
       singleBranch: true,
       depth: 1,
