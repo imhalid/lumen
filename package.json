@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "dev:vercel": "vercel dev --listen 8888 --yes",
     "dev:storybook": "storybook dev -p 6006",
     "build": "tsc && vite build",
     "build:storybook": "storybook build",
@@ -21,7 +20,6 @@
     "postinstall": "patch-package"
   },
   "dependencies": {
-    "@ai-sdk/react": "^3.0.6",
     "@base-ui/react": "^1.2.0",
     "@codemirror/autocomplete": "^6.1.0",
     "@codemirror/commands": "^6.7.0",
@@ -52,7 +50,6 @@
     "@supabase/supabase-js": "^2.89.0",
     "@uiw/codemirror-themes": "^4.22.0",
     "@uiw/react-codemirror": "^4.23.6",
-    "ai": "^6.0.6",
     "buffer": "^6.0.3",
     "change-case": "^5.4.4",
     "chrono-node": "^2.7.0",
@@ -83,7 +80,6 @@
     "mime": "^4.0.3",
     "motion": "^12.12.1",
     "node-emoji": "^2.1.0",
-    "openai": "^6.15.0",
     "prismjs": "^1.29.0",
     "qs": "^6.11.0",
     "react": "^18.2.0",
@@ -168,7 +164,6 @@
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.5",
     "typescript": "^5.9.3",
-    "vercel": "^44.7.3",
     "vite": "^5.4.11",
     "vite-node": "^2.1.8",
     "vite-plugin-node-polyfills": "^0.22.0",

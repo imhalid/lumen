@@ -104,23 +104,7 @@ export function CommandMenu() {
             search: {
               query: undefined,
               view: "grid",
-            },
-          })
-        },
-      },
-      {
-        label: "Calendar",
-        icon: <CalendarDateIcon16 date={new Date().getDate()} />,
-        onSelect: () => {
-          navigate({
-            to: "/notes/$",
-            params: {
-              _splat: toDateString(new Date()),
-            },
-            search: {
-              mode: getHasDailyNote() ? "read" : "write",
-              query: undefined,
-              view: "grid",
+              folder: undefined,
             },
           })
         },
@@ -350,7 +334,7 @@ export function CommandMenu() {
                   onSelect={handleSelect(() =>
                     navigate({
                       to: "/",
-                      search: { query: `tag:${name}`, view: "grid" },
+                      search: { query: `tag:${name}`, view: "grid", folder: undefined },
                     }),
                   )}
                 >
@@ -408,6 +392,7 @@ export function CommandMenu() {
                       search: {
                         query: deferredQuery,
                         view: "grid",
+                        folder: undefined,
                       },
                     }),
                   )}

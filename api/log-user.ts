@@ -4,6 +4,30 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    // Optional JSON body: { repo?: { owner: string; name: string } }
+    let repo: { owner: string; name: string } | null = null
+    const contentType = request.headers.get("content-type") ?? ""
+    if (contentType.includes("application/json")) {
+      try {
+        const body = (await request.json()) as unknown
+        if (
+          body &&
+          typeof body === "object" &&
+          "repo" in body &&
+          body.repo &&
+          typeof (body as any).repo.owner === "string" &&
+          typeof (body as any).repo.name === "string"
+        ) {
+          repo = {
+            owner: (body as any).repo.owner,
+            name: (body as any).repo.name,
+          }
+        }
+      } catch {
+        // Ignore JSON parse errors and continue without repo info
+      }
+    }
+
     const token = getAuthToken(request)
     if (!token) {
       return new Response(JSON.stringify({ error: "Missing token" }), {
@@ -49,6 +73,27 @@ export async function POST(request: Request): Promise<Response> {
 
     if (userError) {
       throw userError
+    }
+
+    // If we know which repo the user opened, upsert it into repositories
+    if (repo) {
+      const github_full_name = `${repo.owner}/${repo.name}`
+      const { error: repoError } = await supabase
+        .from("repositories")
+        .upsert(
+          {
+            user_id: user.id,
+            github_full_name,
+            github_repo_name: repo.name,
+            github_owner_login: repo.owner,
+          },
+          // Ensure we don't create duplicates per user/repo
+          { onConflict: "user_id,github_full_name" },
+        )
+
+      if (repoError) {
+        throw repoError
+      }
     }
 
     // Log the `opened_app` event

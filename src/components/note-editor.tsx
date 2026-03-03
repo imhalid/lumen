@@ -15,7 +15,6 @@ import { parseDate } from "chrono-node"
 import { useAtomCallback } from "jotai/utils"
 // import * as emoji from "node-emoji"
 import { tags } from "@lezer/highlight"
-import { vim } from "@replit/codemirror-vim"
 import { useNavigate } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
 import React from "react"
@@ -27,7 +26,7 @@ import { indentedLineWrapExtension } from "../codemirror-extensions/indented-lin
 import { pasteExtension } from "../codemirror-extensions/paste"
 import { spellcheckExtension } from "../codemirror-extensions/spellcheck"
 import { wikilinkExtension } from "../codemirror-extensions/wikilink"
-import { isSignedOutAtom, tagsAtom, templatesAtom, vimModeAtom } from "../global-state"
+import { isSignedOutAtom, tagsAtom, templatesAtom } from "../global-state"
 import { useAttachFile } from "../hooks/attach-file"
 import { useSaveNote } from "../hooks/note"
 import { useStableSearchNotes } from "../hooks/search-notes"
@@ -104,7 +103,6 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
     ref,
   ) => {
     const attachFile = useAttachFile()
-    const vimMode = useAtomValue(vimModeAtom)
     const navigate = useNavigate()
     const [isTooltipOpen, setIsTooltipOpen] = React.useState(false)
     const [isCommandKeyPressed, setIsCommandKeyPressed] = React.useState(false)
@@ -184,16 +182,11 @@ export const NoteEditor = React.forwardRef<ReactCodeMirrorRef, NoteEditorProps>(
         syntaxHighlighting(syntaxHighlighter),
       ]
 
-      if (vimMode) {
-        baseExtensions.push(vim())
-      }
-
       return baseExtensions
     }, [
       attachFile,
       onPaste, // TODO
       onEnter,
-      vimMode,
       noteCompletion,
       tagPropertyCompletion,
       tagSyntaxCompletion,

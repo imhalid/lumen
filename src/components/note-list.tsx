@@ -10,7 +10,6 @@ import { parseQuery } from "../utils/search"
 import { formatNumber, pluralize } from "../utils/pluralize"
 import { Button } from "./button"
 import { Checkbox } from "./checkbox"
-import { Dice } from "./dice"
 import { DropdownMenu } from "./dropdown-menu"
 import { IconButton } from "./icon-button"
 import {
@@ -18,8 +17,6 @@ import {
   ChevronRightIcon16,
   FolderIcon16,
   GlobeIcon16,
-  GridIcon16,
-  ListIcon16,
   PinFillIcon12,
   TagFillIcon12,
   TagIcon12,
@@ -33,21 +30,12 @@ import { NotePreviewCard } from "./note-preview-card"
 import { PillButton } from "./pill-button"
 import { SearchInput } from "./search-input"
 
-type View = "grid" | "list"
-
-const viewIcons: Record<View, React.ReactNode> = {
-  grid: <GridIcon16 />,
-  list: <ListIcon16 />,
-}
-
 type NoteListProps = {
   baseQuery?: string
   folder?: string
   query: string
-  view: View
   onFolderChange?: (folder: string | undefined) => void
   onQueryChange: (query: string) => void
-  onViewChange: (view: View) => void
 }
 
 const initialVisibleItems = 10
@@ -115,10 +103,8 @@ export function NoteList({
   baseQuery = "",
   folder,
   query,
-  view,
   onFolderChange = () => {},
   onQueryChange,
-  onViewChange,
 }: NoteListProps) {
   const searchNotes = useSearchNotes()
   const notes = useAtomValue(notesAtom)
@@ -127,7 +113,8 @@ export function NoteList({
   const moveNotesToFolder = useMoveNotesToFolder()
 
   const [isSelectMode, setIsSelectMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
+  const [selectedFolderPaths, setSelectedFolderPaths] = useState<Set<string>>(new Set())
 
   const [deferredQuery] = useDebounce(query, 150)
 
@@ -156,8 +143,8 @@ export function NoteList({
     [notes, virtualFolders],
   )
 
-  const toggleSelection = useCallback((id: string) => {
-    setSelectedIds((prev) => {
+  const toggleNoteSelection = useCallback((id: string) => {
+    setSelectedNoteIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -165,23 +152,104 @@ export function NoteList({
     })
   }, [])
 
+  const toggleFolderSelection = useCallback((path: string) => {
+    setSelectedFolderPaths((prev) => {
+      const next = new Set(prev)
+      if (next.has(path)) next.delete(path)
+      else next.add(path)
+      return next
+    })
+  }, [])
+
   const selectAllVisible = useCallback(() => {
-    setSelectedIds(
+    setSelectedNoteIds(
       new Set(childNotes.slice(0, numVisibleItems).map((n) => n.id)),
     )
   }, [childNotes, numVisibleItems])
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false)
-    setSelectedIds(new Set())
+    setSelectedNoteIds(new Set())
+    setSelectedFolderPaths(new Set())
   }, [])
 
   const handleMoveToFolder = useCallback(
     (targetFolder: string) => {
-      const result = moveNotesToFolder([...selectedIds], targetFolder)
+      const idsToMove = new Set<string>()
+
+      // Explicitly selected notes
+      for (const id of selectedNoteIds) {
+        idsToMove.add(id)
+      }
+
+      // All notes under selected folders (including nested)
+      for (const folderPath of selectedFolderPaths) {
+        for (const id of notes.keys()) {
+          if (id === folderPath || id.startsWith(folderPath + "/")) {
+            idsToMove.add(id)
+          }
+        }
+      }
+
+      if (idsToMove.size === 0) return
+
+      const result = moveNotesToFolder([...idsToMove], targetFolder)
       if (result.success && result.moved > 0) exitSelectMode()
     },
-    [moveNotesToFolder, selectedIds, exitSelectMode],
+    [moveNotesToFolder, selectedNoteIds, selectedFolderPaths, notes, exitSelectMode],
+  )
+
+  const handleDragStart = useCallback(
+    (noteId: string, event: React.DragEvent<HTMLDivElement>) => {
+      const idsToMove = new Set<string>()
+
+      // If note is already part of selection, move all selected notes; otherwise just this note
+      if (selectedNoteIds.size > 0 && selectedNoteIds.has(noteId)) {
+        for (const id of selectedNoteIds) idsToMove.add(id)
+      } else {
+        idsToMove.add(noteId)
+      }
+
+      // Include all notes under selected folders
+      for (const folderPath of selectedFolderPaths) {
+        for (const id of notes.keys()) {
+          if (id === folderPath || id.startsWith(folderPath + "/")) {
+            idsToMove.add(id)
+          }
+        }
+      }
+
+      event.dataTransfer.setData(
+        "application/x-note-ids",
+        JSON.stringify([...idsToMove]),
+      )
+      event.dataTransfer.effectAllowed = "move"
+    },
+    [selectedNoteIds, selectedFolderPaths, notes],
+  )
+
+  const handleDragOverFolder = useCallback((event: React.DragEvent<HTMLElement>) => {
+    if (event.dataTransfer.types.includes("application/x-note-ids")) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = "move"
+    }
+  }, [])
+
+  const handleDropOnFolder = useCallback(
+    (targetFolder: string, event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault()
+      const raw = event.dataTransfer.getData("application/x-note-ids")
+      if (!raw) return
+      let ids: string[]
+      try {
+        ids = JSON.parse(raw) as string[]
+      } catch {
+        return
+      }
+      const result = moveNotesToFolder(ids, targetFolder)
+      if (result.success && result.moved > 0) exitSelectMode()
+    },
+    [moveNotesToFolder, exitSelectMode],
   )
 
   const [bottomRef, bottomInView] = useInView()
@@ -292,17 +360,12 @@ export function NoteList({
           <div className="flex flex-wrap items-center gap-2">
             {isSelectMode ? (
               <>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={exitSelectMode}
-                  className="shrink-0"
-                >
+                <Button variant="secondary" size="small" onClick={exitSelectMode} className="shrink-0">
                   <XIcon12 className="mr-1.5" />
                   Cancel
                 </Button>
                 <span className="text-sm text-text-secondary shrink-0">
-                  {selectedIds.size} selected
+                  {selectedNoteIds.size + selectedFolderPaths.size} selected
                 </span>
                 <DropdownMenu>
                   <DropdownMenu.Trigger
@@ -310,7 +373,7 @@ export function NoteList({
                       <Button
                         variant="primary"
                         size="small"
-                        disabled={selectedIds.size === 0}
+                        disabled={selectedNoteIds.size + selectedFolderPaths.size === 0}
                         className="shrink-0"
                       >
                         <FolderIcon16 className="mr-1.5" />
@@ -359,9 +422,6 @@ export function NoteList({
                     setNumVisibleItems(initialVisibleItems)
                   }}
                 />
-                {isFolderView ? (
-                  <NewFolderButton currentFolder={folder || undefined} />
-                ) : null}
                 <Button
                   variant="secondary"
                   size="small"
@@ -372,45 +432,6 @@ export function NoteList({
                   <CheckIcon16 className="mr-1.5" />
                   Select
                 </Button>
-                <DiceButton
-                  disabled={childNotes.length === 0}
-                  onClick={() => {
-                    const resultsCount = childNotes.length
-                    const randomIndex = Math.floor(Math.random() * resultsCount)
-                    navigate({ to: `/notes/${childNotes[randomIndex].id}` })
-                  }}
-                />
-                <DropdownMenu>
-              <DropdownMenu.Trigger
-                render={
-                  <IconButton
-                    aria-label="View"
-                    className="h-10 w-10 shrink-0 rounded-lg bg-bg-secondary hover:bg-bg-secondary-hover! data-[popup-open]:bg-bg-secondary-hover! active:bg-bg-secondary-active! epaper:ring-1 epaper:ring-inset epaper:ring-border epaper:focus-visible:ring-2 coarse:h-12 coarse:w-12"
-                  >
-                    {viewIcons[view]}
-                  </IconButton>
-                }
-              />
-              <DropdownMenu.Content align="end" width={160}>
-                <DropdownMenu.Group>
-                  <DropdownMenu.GroupLabel>View as</DropdownMenu.GroupLabel>
-                  <DropdownMenu.Item
-                    icon={<GridIcon16 />}
-                    onClick={() => onViewChange("grid")}
-                    selected={view === "grid"}
-                  >
-                    Grid
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item
-                    icon={<ListIcon16 />}
-                    onClick={() => onViewChange("list")}
-                    selected={view === "list"}
-                  >
-                    List
-                  </DropdownMenu.Item>
-                </DropdownMenu.Group>
-              </DropdownMenu.Content>
-            </DropdownMenu>
               </>
             )}
           </div>
@@ -511,66 +532,60 @@ export function NoteList({
               ) : null}
             </div>
           ) : null}
-          {childFolderNames.length > 0 ? (
-            <div className="flex flex-col gap-1">
-              <div className="flex h-8 items-center px-2 text-sm text-text-secondary coarse:h-10 coarse:px-3">
-                Folders
-              </div>
-              <ul className="flex flex-col gap-0.5">
-                {childFolderNames.map((name) => {
-                  const folderPath = folder ? `${folder}/${name}` : name
-                  return (
-                    <li key={folderPath}>
+          {true ? (
+            <ul className="grid grid-cols-1 @[768px]:grid-cols-2 @[1024px]:grid-cols-3 gap-0.5">
+              {childFolderNames.map((name) => {
+                const folderPath = folder ? `${folder}/${name}` : name
+                const isFolderSelected = selectedFolderPaths.has(folderPath)
+                return (
+                  <li key={folderPath}>
+                    {isSelectMode ? (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        draggable
+                        onDragStart={(event) => handleDragStart(folderPath, event as any)}
+                        onClick={() => toggleFolderSelection(folderPath)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            toggleFolderSelection(folderPath)
+                          }
+                        }}
+                        onDragOver={handleDragOverFolder}
+                        onDrop={(event) => handleDropOnFolder(folderPath, event)}
+                        className="focus-ring flex h-10 cursor-pointer items-center rounded-lg px-3 hover:bg-bg-hover coarse:h-12 coarse:p-4"
+                      >
+                        <Checkbox
+                          checked={isFolderSelected}
+                          onCheckedChange={() => toggleFolderSelection(folderPath)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mr-3 coarse:mr-4"
+                        />
+                        <FolderIcon16 className="mr-3 shrink-0 text-text-secondary coarse:mr-4" />
+                        <span className="truncate text-text">{name}</span>
+                        <ChevronRightIcon16 className="ml-auto shrink-0 text-text-tertiary" />
+                      </div>
+                    ) : (
                       <button
                         type="button"
+                        draggable
+                        onDragStart={(event) =>
+                          handleDragStart(folderPath, event as unknown as React.DragEvent<HTMLDivElement>)
+                        }
                         onClick={() => onFolderChange(folderPath)}
+                        onDragOver={handleDragOverFolder}
+                        onDrop={(event) => handleDropOnFolder(folderPath, event)}
                         className="focus-ring flex h-10 w-full items-center rounded-lg px-3 text-left hover:bg-bg-hover coarse:h-12 coarse:p-4"
                       >
                         <FolderIcon16 className="mr-3 shrink-0 text-text-secondary coarse:mr-4" />
                         <span className="truncate text-text">{name}</span>
                         <ChevronRightIcon16 className="ml-auto shrink-0 text-text-tertiary" />
                       </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ) : null}
-          {view === "grid" ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
-              {childNotes.slice(0, numVisibleItems).map((note) => (
-                <div key={note.id} className="relative">
-                  {isSelectMode ? (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => toggleSelection(note.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault()
-                          toggleSelection(note.id)
-                        }
-                      }}
-                      className="focus-ring flex cursor-pointer flex-col rounded-xl border-2 border-transparent transition-[border-color] hover:border-border [&:has([data-state=checked])]:border-border-focus"
-                    >
-                      <div className="absolute left-3 top-3 z-10">
-                        <Checkbox
-                          checked={selectedIds.has(note.id)}
-                          onCheckedChange={() => toggleSelection(note.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                      <NotePreviewCard id={note.id} selectMode />
-                    </div>
-                  ) : (
-                    <NotePreviewCard id={note.id} />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {view === "list" ? (
-            <ul className="flex flex-col gap-0.5">
+                    )}
+                  </li>
+                )
+              })}
               {childNotes.slice(0, numVisibleItems).map((note) => {
                 if (isSelectMode) {
                   return (
@@ -578,18 +593,20 @@ export function NoteList({
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => toggleSelection(note.id)}
+                        draggable
+                        onDragStart={(event) => handleDragStart(note.id, event)}
+                        onClick={() => toggleNoteSelection(note.id)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault()
-                            toggleSelection(note.id)
+                            toggleNoteSelection(note.id)
                           }
                         }}
                         className="focus-ring flex h-10 cursor-pointer items-center rounded-lg px-3 hover:bg-bg-hover coarse:h-12 coarse:p-4"
                       >
                         <Checkbox
-                          checked={selectedIds.has(note.id)}
-                          onCheckedChange={() => toggleSelection(note.id)}
+                          checked={selectedNoteIds.has(note.id)}
+                          onCheckedChange={() => toggleNoteSelection(note.id)}
                           onClick={(e) => e.stopPropagation()}
                           className="mr-3 coarse:mr-4"
                         />
@@ -644,25 +661,5 @@ export function NoteList({
         ) : null}
       </div>
     </LinkHighlightProvider>
-  )
-}
-
-function DiceButton({ disabled = false, onClick }: { disabled?: boolean; onClick?: () => void }) {
-  const [number, setNumber] = React.useState(() => Math.floor(Math.random() * 6) + 1)
-  return (
-    <IconButton
-      disabled={disabled}
-      aria-label="Roll the dice"
-      className="group/dice h-10 w-10 shrink-0 rounded-lg bg-bg-secondary hover:bg-bg-secondary-hover! active:bg-bg-secondary-active! epaper:ring-1 epaper:ring-inset epaper:ring-border epaper:focus-visible:ring-2 coarse:h-12 coarse:w-12"
-      onClick={() => {
-        setNumber(Math.floor(Math.random() * 6) + 1)
-        onClick?.()
-      }}
-    >
-      <Dice
-        number={number}
-        className="group-hover/dice:rotate-[20deg] group-active/dice:rotate-[100deg] group-hover/dice:-translate-y-0.5"
-      />
-    </IconButton>
   )
 }

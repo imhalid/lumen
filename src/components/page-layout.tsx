@@ -8,12 +8,10 @@ import {
   isRepoClonedAtom,
   isRepoNotClonedAtom,
   isSignedOutAtom,
-  openaiKeyAtom,
-  voiceAssistantEnabledAtom,
 } from "../global-state"
 import { cx } from "../utils/cx"
+import { CreateEntityDialogHost } from "./create-entity-dialog-host"
 import { PageHeader, PageHeaderProps } from "./page-header"
-import { VoiceConversationBar } from "./voice-conversation"
 import { HoverCard } from "./hover-card"
 
 type PageLayoutProps = PageHeaderProps & {
@@ -36,8 +34,6 @@ export function PageLayout({
   const isCloningRepo = useAtomValue(isCloningRepoAtom)
   const isRepoCloned = useAtomValue(isRepoClonedAtom)
   const githubRepo = useAtomValue(githubRepoAtom)
-  const openaiKey = useAtomValue(openaiKeyAtom)
-  const voiceAssistantEnabled = useAtomValue(voiceAssistantEnabledAtom)
   const { online } = useNetworkState()
 
   return (
@@ -48,6 +44,7 @@ export function PageLayout({
           actions={isRepoCloned || isSignedOut || disableGuard ? actions : undefined}
           className="print:hidden"
         />
+        <CreateEntityDialogHost />
         <div className="relative grid overflow-hidden">
           <main className="relative isolate overflow-auto [scrollbar-gutter:stable] scroll-mask">
             {isRepoNotCloned && !disableGuard ? (
@@ -78,7 +75,6 @@ export function PageLayout({
 
           <div className="absolute bottom-3 right-3 flex items-center gap-2 coarse:gap-3">
             {floatingActions}
-            {online && openaiKey && voiceAssistantEnabled ? <VoiceConversationBar /> : null}
           </div>
         </div>
       </div>

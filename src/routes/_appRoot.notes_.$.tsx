@@ -1,5 +1,4 @@
 import * as RadixSwitch from "@radix-ui/react-switch"
-import { Vim } from "@replit/codemirror-vim"
 import { createFileRoute } from "@tanstack/react-router"
 import { ReactCodeMirrorRef } from "@uiw/react-codemirror"
 import copy from "copy-to-clipboard"
@@ -12,8 +11,6 @@ import { useNetworkState } from "react-use"
 import useResizeObserver from "use-resize-observer"
 import { z } from "zod/v3"
 import { Button } from "../components/button"
-import { Calendar } from "../components/calendar"
-import { CalendarHeader } from "../components/calendar-header"
 import { DaysOfWeek } from "../components/days-of-week"
 import { Details } from "../components/details"
 import { DraftIndicator } from "../components/draft-indicator"
@@ -47,14 +44,12 @@ import { PillButton } from "../components/pill-button"
 import { SegmentedControl } from "../components/segmented-control"
 import { ShareDialog } from "../components/share-dialog"
 import { Tooltip } from "../components/tooltip"
-import { Tool, voiceConversationMachineAtom } from "../components/voice-conversation"
 import {
   dailyTemplateAtom,
   defaultFontAtom,
   githubRepoAtom,
   globalStateMachineAtom,
   isSignedOutAtom,
-  vimModeAtom,
   weeklyTemplateAtom,
 } from "../global-state"
 import { useAttachFile } from "../hooks/attach-file"
@@ -101,12 +96,14 @@ function RouteComponent() {
   const isSignedOut = useAtomValue(isSignedOutAtom)
   const isRepoCloned = useAtomValue(isRepoClonedAtom)
 
+  const noteBasename = noteId?.includes("/") ? noteId.split("/").pop()! : noteId
+
   if (isSignedOut || isRepoCloned) {
     return <NotePage key={noteId} />
   }
 
   return (
-    <PageLayout title={`${noteId}.md`} icon={<NoteIcon16 />}>
+    <PageLayout title={`${noteBasename}.md`} icon={<NoteIcon16 />}>
       <div>{/* TODO */}</div>
     </PageLayout>
   )
@@ -159,7 +156,6 @@ function NotePage() {
           ? renderTemplate(weeklyTemplate, { week: noteId ?? "" })
           : "",
   })
-  const vimMode = useAtomValue(vimModeAtom)
   const parsedNote = React.useMemo(
     () => parseNote(noteId ?? "", editorValue),
     [noteId, editorValue],
@@ -314,120 +310,6 @@ function NotePage() {
   const switchToWritingRef = useValueRef(switchToWriting)
   const isDraftRef = useValueRef(isDraft)
 
-  // Voice conversation tools
-  const sendVoiceConversation = useSetAtom(voiceConversationMachineAtom)
-  React.useEffect(() => {
-    const tools = [
-      {
-        name: "read_current_note",
-        description: "Read the content of the current note.",
-        parameters: z.object({}),
-        execute: async () => {
-          return JSON.stringify({
-            note_id: noteId,
-            content: editorValueRef.current,
-          })
-        },
-      } satisfies Tool<Record<string, never>>,
-      {
-        name: "edit_current_note",
-        description:
-          "Replace the entire content of the current note with the provided text. This overwrites all existing content.",
-        parameters: z.object({
-          content: z.string(),
-        }),
-        execute: async ({ content }) => {
-          setEditorValueRef.current(content)
-          playSound(notificationSound)
-          return JSON.stringify({ success: true })
-        },
-      } satisfies Tool<{ content: string }>,
-      {
-        name: "save_current_note",
-        description: "Save the current note.",
-        parameters: z.object({}),
-        execute: async () => {
-          handleSaveRef.current(editorValueRef.current)
-          playSound(notificationSound)
-          return JSON.stringify({ success: true })
-        },
-      } satisfies Tool<Record<string, never>>,
-      {
-        name: "delete_current_note",
-        description: "Delete the current note. This action is irreversible.",
-        parameters: z.object({}),
-        execute: async () => {
-          if (!noteId) return
-
-          // Ask the user to confirm before deleting a note
-          if (!window.confirm("Are you sure you want to delete this note?")) {
-            return JSON.stringify({ error: "Operation cancelled by user" })
-          }
-
-          clearNoteDraft({ githubRepo: githubRepoRef.current, noteId })
-
-          if (noteRef.current) {
-            deleteNoteRef.current(noteRef.current.id)
-          }
-
-          playSound(notificationSound)
-
-          // Go home
-          await navigate({
-            to: "/",
-            search: { query: undefined, view: "grid" },
-            replace: true,
-          })
-
-          return JSON.stringify({ success: true })
-        },
-      } satisfies Tool<Record<string, never>>,
-      {
-        name: "show_preview",
-        description:
-          "Switch the view to show the rendered markdown preview of the current note. This only affects how the note is displayed.",
-        parameters: z.object({}),
-        execute: async () => {
-          switchToReadingRef.current()
-
-          return JSON.stringify({ success: true })
-        },
-      } satisfies Tool<Record<string, never>>,
-      {
-        name: "show_source",
-        description:
-          "Switch the view to show the raw markdown source of the current note. This only affects how the note is displayed.",
-        parameters: z.object({}),
-        execute: async () => {
-          switchToWritingRef.current()
-
-          return JSON.stringify({ success: true })
-        },
-      } satisfies Tool<Record<string, never>>,
-    ]
-
-    sendVoiceConversation({ type: "ADD_TOOLS", tools })
-
-    return () => {
-      sendVoiceConversation({
-        type: "REMOVE_TOOLS",
-        toolNames: tools.map((tool) => tool.name),
-      })
-    }
-  }, [
-    deleteNoteRef,
-    editorValueRef,
-    githubRepoRef,
-    handleSaveRef,
-    noteRef,
-    setEditorValueRef,
-    switchToReadingRef,
-    switchToWritingRef,
-    navigate,
-    noteId,
-    sendVoiceConversation,
-  ])
-
   // Keyboard shortcuts
   useHotkeys(
     "mod+e",
@@ -441,16 +323,7 @@ function NotePage() {
     },
   )
 
-  useHotkeys(
-    "i",
-    (event) => {
-      switchToWriting()
-      event.preventDefault()
-    },
-    {
-      enabled: vimMode && mode === "read",
-    },
-  )
+  
 
   useHotkeys(
     "mod+s",
@@ -477,45 +350,22 @@ function NotePage() {
     },
   )
 
-  // Vim commands
-
-  useEffect(() => {
-    // :w - Save
-    Vim.defineEx("w", "w", () => {
-      handleSaveRef.current(editorValueRef.current)
-    })
-
-    // :x - Save and switch to read mode
-    Vim.defineEx("x", "x", () => {
-      handleSaveRef.current(editorValueRef.current)
-      switchToReadingRef.current()
-    })
-
-    // :wq - Save and switch to read mode
-    Vim.defineEx("wq", "wq", () => {
-      handleSaveRef.current(editorValueRef.current)
-      switchToReadingRef.current()
-    })
-
-    // :q - Switch to read mode if there are no changes
-    Vim.defineEx("q", "q", () => {
-      if (!isDraftRef.current) {
-        switchToReadingRef.current()
-      }
-    })
-  }, [handleSaveRef, editorValueRef, switchToReadingRef, isDraftRef])
-
   return (
     <PageLayout
       title={
-        <div className="flex items-center gap-2">
-          <span className="truncate">{noteId}.md</span>
-          {isDraft ? <DraftIndicator /> : null}
-        </div>
+        noteId && (
+          <div className="flex items-center gap-2">
+            <span className="truncate">
+              {noteId.includes("/") ? noteId.split("/").pop() : noteId}
+              .md
+            </span>
+            {isDraft ? <DraftIndicator /> : null}
+          </div>
+        )
       }
       icon={<NoteFavicon note={parsedNote} />}
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 bg-red-500">
           {(!note && editorValue) || isDraft ? (
             <Button
               disabled={isSignedOut}
@@ -714,7 +564,7 @@ function NotePage() {
                     // Go home
                     navigate({
                       to: "/",
-                      search: { query: undefined, view: "grid" },
+                      search: { query: undefined, view: "grid", folder: undefined },
                       replace: true,
                     })
                   }}
@@ -801,12 +651,7 @@ function NotePage() {
               resolvedWidth === "fixed" && "mx-auto max-w-[700px]",
             )}
           >
-            {isDailyNote || isWeeklyNote ? (
-              <div className="print-hidden flex flex-col gap-8">
-                <Calendar className="-m-2" activeNoteId={noteId ?? ""} />
-                <CalendarHeader activeNoteId={noteId ?? ""} />
-              </div>
-            ) : null}
+            
 
             {mode === "read" && (
               <div className="min-h-[240px]">
@@ -896,16 +741,9 @@ function NotePage() {
                   <NoteList
                     baseQuery={`link:"${noteId}" -id:"${noteId}"`}
                     query={query ?? ""}
-                    view={view}
                     onQueryChange={(query) =>
                       navigate({
                         search: (prev) => ({ ...prev, query }),
-                        replace: true,
-                      })
-                    }
-                    onViewChange={(view) =>
-                      navigate({
-                        search: (prev) => ({ ...prev, view }),
                         replace: true,
                       })
                     }

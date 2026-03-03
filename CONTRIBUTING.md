@@ -30,10 +30,10 @@
 1.  Start the development server:
 
     ```shell
-    npm run dev:vercel
+    npm run dev
     ```
 
-1.  Open the app at http://localhost:8888
+1.  Open the app at http://localhost:5173 (or the port Vite reports)
 
 ## Architecture
 
@@ -52,17 +52,12 @@ graph
       indexeddb[(IndexedDB)]
     end
 
-    subgraph edge[Vercel Functions]
-      cors-proxy(["/cors-proxy"])
-    end
-
     github.com([github.com])
 
     state-machine <--> isomorphic-git
     state-machine <--> lightning-fs
     state-machine <--> local-storage
     isomorphic-git <--> lightning-fs
-    isomorphic-git <--> cors-proxy
     lightning-fs <--> indexeddb
-    cors-proxy <--> github.com
+    isomorphic-git <--> github.com
 ```

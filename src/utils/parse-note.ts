@@ -220,7 +220,7 @@ function _parseNote(id: NoteId, content: string): Note {
       }
       // If there's no title but the ID contains non-numeric characters, use that as the display name
       else if (id && !/^\d+$/.test(id)) {
-        displayName = id
+        displayName = id.includes("/") ? id.split("/").pop()! : id
       }
       // For untitled notes with numeric IDs, we use the first 8 words as the title
       else if (contentMdast) {

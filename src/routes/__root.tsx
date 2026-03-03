@@ -14,7 +14,7 @@ function NotFoundComponent() {
   return (
     <div className="p-4">
       Page not found.{" "}
-      <Link to="/" search={{ query: undefined, view: "grid" }} className="link">
+      <Link to="/" search={{ query: undefined, view: "grid", folder: undefined }} className="link">
         Go home
       </Link>
     </div>

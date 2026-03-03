@@ -176,65 +176,6 @@
   }
 }
 
-/* E-paper theme */
-
-[data-epaper] {
-  --color-light: #fff;
-  --color-dark: #000;
-
-  /* Base colors - define first */
-  --color-text: var(--color-dark);
-  --color-bg: var(--color-light);
-
-  /* Text colors */
-  --color-text-secondary: var(--color-text);
-  --color-text-tertiary: var(--color-text);
-  --color-text-highlight: var(--color-bg);
-  --color-text-selection: var(--color-bg);
-  --color-text-success: var(--color-text);
-  --color-text-danger: var(--color-text);
-  --color-text-pending: var(--color-text);
-  --color-text-pinned: var(--color-text);
-
-  /* Background colors */
-  --color-bg-hover: transparent;
-  --color-bg-active: transparent;
-  --color-bg-inset: var(--color-bg);
-  --color-bg-card: var(--color-bg);
-  --color-bg-overlay: var(--color-bg);
-  --color-bg-backdrop: var(--color-bg);
-  --color-bg-overlay-backdrop: var(--color-bg);
-  --color-bg-secondary: var(--color-bg);
-  --color-bg-secondary-hover: transparent;
-  --color-bg-secondary-active: transparent;
-  --color-bg-tertiary: var(--color-bg);
-  --color-bg-code-block: var(--color-bg);
-  --color-bg-highlight: var(--color-text);
-  --color-bg-selection: var(--color-text);
-
-  /* Border colors */
-  --color-border: var(--color-text);
-  --color-border-secondary: var(--color-text);
-  --color-border-table: var(--color-text);
-  --color-border-focus: var(--color-text);
-
-  /* Syntax colors */
-  --color-syntax-cyan: var(--color-text);
-  --color-syntax-red: var(--color-text);
-  --color-syntax-purple: var(--color-text);
-  --color-syntax-green: var(--color-text);
-
-  /* Border radii */
-  --border-radius-base: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  [data-epaper] {
-    --color-text: var(--color-light);
-    --color-bg: var(--color-dark);
-  }
-}
-
 /* Print styles */
 
 @media print {

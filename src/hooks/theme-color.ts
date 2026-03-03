@@ -1,13 +1,9 @@
-import { useAtomValue } from "jotai"
 import React from "react"
-import { epaperAtom } from "../global-state"
 
 export const THEME_COLOR_VAR = "--color-bg"
 
 /** Dynamically change the theme color */
 export function useThemeColor() {
-  const epaper = useAtomValue(epaperAtom)
-
   const setThemeColor = React.useCallback(() => {
     if (typeof window === "undefined") {
       return
@@ -31,6 +27,5 @@ export function useThemeColor() {
     return () => {
       prefersDark.removeEventListener("change", setThemeColor)
     }
-    // Re-run when epaper changes since it affects --color-bg
-  }, [setThemeColor, epaper])
+  }, [setThemeColor])
 }

@@ -24,6 +24,7 @@ export function TagLink({ name, className }: TagLinkProps) {
                   .slice(0, i + 1)
                   .join("/")}`,
                 view: "grid",
+                folder: undefined,
               }}
             >
               {part}

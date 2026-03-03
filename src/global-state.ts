@@ -554,12 +554,27 @@ function createGlobalStateMachine() {
         logUser: (context) => {
           if (import.meta.env.DEV) return
           const token = context.githubUser?.token
-          if (token) {
-            fetch("/api/log-user", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${token}` },
-            }).catch(() => {})
-          }
+          if (!token) return
+
+          const repo = context.githubRepo
+
+          fetch("/api/log-user", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(
+              repo
+                ? {
+                    repo: {
+                      owner: repo.owner,
+                      name: repo.name,
+                    },
+                  }
+                : {},
+            ),
+          }).catch(() => {})
         },
       },
     },
@@ -653,6 +668,26 @@ export const githubRepoAtom = selectAtom(
 const VIRTUAL_FOLDERS_STORAGE_KEY = "lumen_virtual_folders"
 
 export const virtualFoldersAtom = atomWithStorage<string[]>(VIRTUAL_FOLDERS_STORAGE_KEY, [])
+
+// -----------------------------------------------------------------------------
+// Global dialogs
+// -----------------------------------------------------------------------------
+
+export type CreateEntityDialogState =
+  | { open: false }
+  | {
+      open: true
+      kind: "note"
+      currentFolder?: string
+      tags: string[]
+    }
+  | {
+      open: true
+      kind: "folder"
+      currentFolder?: string
+    }
+
+export const createEntityDialogAtom = atom<CreateEntityDialogState>({ open: false })
 
 // -----------------------------------------------------------------------------
 // Notes
@@ -865,26 +900,10 @@ export const taskSearcherAtom = atom((get) => {
 // UI state
 // -----------------------------------------------------------------------------
 
-export const epaperAtom = atomWithStorage<boolean>("epaper", false)
-
-export const vimModeAtom = atomWithStorage<boolean>("vim-mode", false)
-
 export const defaultFontAtom = atomWithStorage<Font>("font", "sans")
 
 export const sidebarAtom = atomWithStorage<"expanded" | "collapsed">("sidebar", "expanded")
 
 export const isHelpPanelOpenAtom = atomWithStorage<boolean>("help-panel", false)
 
-export const calendarLayoutAtom = atomWithStorage<"week" | "month">("calendar-layout", "week")
-
-// -----------------------------------------------------------------------------
-// AI
-// -----------------------------------------------------------------------------
-
-export const OPENAI_KEY_STORAGE_KEY = "openai_key"
-
-export const openaiKeyAtom = atomWithStorage<string>(OPENAI_KEY_STORAGE_KEY, "")
-
-export const hasOpenAIKeyAtom = selectAtom(openaiKeyAtom, (key) => key !== "")
-
-export const voiceAssistantEnabledAtom = atomWithStorage<boolean>("voice_assistant_enabled", false)
+// (Calendar and AI/OpenAI integrations removed)

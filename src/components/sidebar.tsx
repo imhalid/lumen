@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router"
+import { useLocation, useRouter } from "@tanstack/react-router"
 import { useSetAtom } from "jotai"
 import { sidebarAtom } from "../global-state"
 import { useIsScrolled } from "../hooks/is-scrolled"
@@ -13,6 +13,8 @@ export function Sidebar() {
   const router = useRouter()
   const setSidebar = useSetAtom(sidebarAtom)
   const { isScrolled, topSentinelProps } = useIsScrolled()
+  const location = useLocation()
+  const folder = location.search.folder
 
   return (
     <div className="grid grid-rows-[auto_1fr] overflow-hidden h-full border-r border-border-secondary">
@@ -48,7 +50,7 @@ export function Sidebar() {
           >
             <ArrowRightIcon16 className="transition-transform group-active:translate-x-0.5" />
           </IconButton>
-          <NewFolderButton />
+          <NewFolderButton currentFolder={folder || undefined} />
           <NewNoteButton />
         </div>
       </div>

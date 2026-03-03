@@ -11,10 +11,8 @@ import {
   pinnedNotesAtom,
 } from "../global-state"
 import { cx } from "../utils/cx"
-import { isValidDateString, isValidWeekString, toDateString } from "../utils/date"
+import { toDateString } from "../utils/date"
 import {
-  CalendarDateFillIcon16,
-  CalendarDateIcon16,
   CircleQuestionMarkFillIcon16,
   CircleQuestionMarkIcon16,
   NoteFillIcon16,
@@ -48,10 +46,6 @@ export function NavItems({
 
   const today = new Date()
   const todayString = toDateString(today)
-
-  // Calendar link is active when viewing any daily or weekly note
-  const noteId = pathname.startsWith("/notes/") ? pathname.slice(7) : ""
-  const isCalendarActive = isValidDateString(noteId) || isValidWeekString(noteId)
 
   // Reference: https://vite-pwa-org.netlify.app/frameworks/react.html#prompt-for-update
   const {
@@ -90,23 +84,6 @@ export function NavItems({
                 onNavigate={onNavigate}
               >
                 Notes
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/notes/$"
-                params={{ _splat: todayString }}
-                search={{
-                  mode: hasDailyNote ? "read" : "write",
-                  query: undefined,
-                  view: "grid",
-                }}
-                activeIcon={<CalendarDateFillIcon16 date={today.getDate()} />}
-                icon={<CalendarDateIcon16 date={today.getDate()} />}
-                forceActive={isCalendarActive}
-                onNavigate={onNavigate}
-              >
-                Calendar
               </NavLink>
             </li>
             <li>

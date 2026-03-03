@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_appRoot/")({
 })
 
 function RouteComponent() {
-  const { query, view, folder } = Route.useSearch()
+  const { query, folder } = Route.useSearch()
   const navigate = Route.useNavigate()
 
   return (
@@ -30,7 +30,6 @@ function RouteComponent() {
         <NoteList
           folder={folder ?? ""}
           query={query ?? ""}
-          view={view}
           onFolderChange={(nextFolder) =>
             navigate({
               search: (prev) => ({ ...prev, folder: nextFolder }),
@@ -39,9 +38,6 @@ function RouteComponent() {
           }
           onQueryChange={(query) =>
             navigate({ search: (prev) => ({ ...prev, query }), replace: true })
-          }
-          onViewChange={(view) =>
-            navigate({ search: (prev) => ({ ...prev, view }), replace: true })
           }
         />
       </div>

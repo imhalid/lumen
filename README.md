@@ -6,12 +6,10 @@ Distraction-free notes, made to last
 
 ## Development
 
-For local development **with GitHub repo clone/sync**, use:
+For local development, simply run:
 
 ```bash
-npm run dev:vercel
+npm run dev
 ```
 
-Then open **http://localhost:8888**.  
-
-Using `npm run dev` (plain Vite) does not run the `/cors-proxy` API, so selecting a repo will fail with a "Remote did not reply using the smart HTTP protocol" error.
+Then open **http://localhost:5173** (or the port Vite prints) in your browser.
